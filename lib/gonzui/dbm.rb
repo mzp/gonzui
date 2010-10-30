@@ -1,11 +1,11 @@
 #
 # dbm.rb - gonzui DB library
 #
-# Copyright (C) 2004-2005 Satoru Takabayashi <satoru@namazu.org> 
+# Copyright (C) 2004-2005 Satoru Takabayashi <satoru@namazu.org>
 #     All rights reserved.
 #     This is free software with ABSOLUTELY NO WARRANTY.
 #
-# You can redistribute it and/or modify it under the terms of 
+# You can redistribute it and/or modify it under the terms of
 # the GNU General Public License version 2.
 #
 require 'zlib'
@@ -19,7 +19,8 @@ module Gonzui
     def open(config, read_only = false)
       File.mkpath(config.db_directory) unless read_only
 
-      dbm_class = BDBDBM # to be pluggable
+      require 'gonzui/couchdbm'
+      dbm_class = CouchDBM # to be pluggable
       dbm = dbm_class.new(config, read_only)
       if block_given?
         begin
@@ -114,7 +115,7 @@ module Gonzui
     include Util
 
     ap = AutoPack # for short
-    DBTable = [ 
+    DBTable = [
       [:fmtid_fmt,         ap::ID,     ap::String,   false],
       [:fmtid_fabbr,       ap::ID,     ap::String,   false],
       [:fabbr_fmtid,       ap::String, ap::ID,       false],
@@ -160,10 +161,9 @@ module Gonzui
     ]
 
     def initialize(config, read_only = false)
-      raise "#{config.db_directory}: No such directory" unless 
+      raise "#{config.db_directory}: No such directory" unless
         File.directory?(config.db_directory)
       @config = config
-
       validate_db_version
       @db_opened = {}
       DBTable.each {|db_name, key_type, value_type, dupsort|
@@ -184,7 +184,7 @@ module Gonzui
         counter = IDCounter.new(self, id_name, counter, db, rev_db, alt_db)
         name = "@" + id_name.to_s + "_counter"
         instance_variable_set(name, counter)
-        self.class.class_eval { 
+        self.class.class_eval {
           attr_reader name.delete("@")
         }
         @id_counters << counter
@@ -249,7 +249,7 @@ module Gonzui
 
       name = "@" + db_name.to_s
       instance_variable_set(name, db)
-      self.class.class_eval { 
+      self.class.class_eval {
         attr_reader name.delete("@")
       }
       return db
@@ -258,7 +258,7 @@ module Gonzui
     def put_db_version
       @version["version"] = DB_VERSION
     end
-      
+
     def validate_db_version
       return unless db_exist?
       version = "unknown"
@@ -276,19 +276,19 @@ module Gonzui
     end
 
     def verify_stat_integrity
-      assert_equal_all(get_nformats, 
-                       fmtid_fmt.length, 
-                       fmtid_fabbr.length, 
+      assert_equal_all(get_nformats,
+                       fmtid_fmt.length,
+                       fmtid_fabbr.length,
                        fabbr_fmtid.length)
       assert_equal_all(get_npackages,
-                       pkgid_pkg.length, 
+                       pkgid_pkg.length,
                        pkg_pkgid.length)
       assert_equal_all(get_ncontents,
-                       path_pathid.length, 
+                       path_pathid.length,
                        pathid_path.length,
                        pathid_content.length,
                        pathid_info.length)
-      assert_equal_all(get_nwords,  
+      assert_equal_all(get_nwords,
                        word_wordid.length)
       nlines_indexed = 0
       @pathid_info.each_key {|path_id|
@@ -314,7 +314,7 @@ module Gonzui
     def close
       flush_cache
       raise DBMError.new("dbm is already closed") unless @opened
-      @db_opened.each {|name, db| 
+      @db_opened.each {|name, db|
         db.close
       }
       @opened = false
@@ -655,7 +655,7 @@ module Gonzui
     # FIXME: Ad hoc serialization. We avoid using Marshal
     # not to make the DB Ruby-dependent.
     def put_package_options(package_id)
-      @pkgid_options[package_id] = sprintf("exclude_pattern:%s", 
+      @pkgid_options[package_id] = sprintf("exclude_pattern:%s",
                                            @config.exclude_pattern.to_s)
       @pkgid_options[package_id] = sprintf("noindex_formats:%s",
                                            @config.noindex_formats.join(","))
