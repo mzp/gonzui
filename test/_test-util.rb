@@ -44,6 +44,9 @@ module TestUtil
 
   def remove_db(config)
     rm_rf(config.db_directory)
+    require 'gonzui/couchdbm'
+    Gonzui::CouchClient.new("localhost", "5984").delete('/gonzui') rescue nil
+
   end
 
 ############### Make ###############
